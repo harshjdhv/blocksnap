@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 
 interface Block {
   id: number
@@ -9,6 +8,8 @@ interface Block {
   y: number
   width: number
   height: number
+  centerX: number
+  centerY: number
   type: "code" | "card" | "image" | "nav" | "button" | "text" | "avatar" | "badge"
   delay: number
 }
@@ -20,7 +21,6 @@ function generateBlocks(cols: number, rows: number, cellSize: number, gap: numbe
 
   let id = 0
 
-  // Place larger blocks first
   const patterns: { w: number; h: number; weight: number }[] = [
     { w: 2, h: 2, weight: 3 },
     { w: 2, h: 1, weight: 5 },
@@ -34,7 +34,6 @@ function generateBlocks(cols: number, rows: number, cellSize: number, gap: numbe
     for (let col = 0; col < cols; col++) {
       if (grid[row]![col]) continue
 
-      // Try to place a pattern
       const shuffled = [...patterns].sort(() => Math.random() - 0.5)
       let placed = false
 
@@ -60,14 +59,21 @@ function generateBlocks(cols: number, rows: number, cellSize: number, gap: numbe
             }
           }
 
+          const w = pattern.w * cellSize + (pattern.w - 1) * gap
+          const h = pattern.h * cellSize + (pattern.h - 1) * gap
+          const x = col * (cellSize + gap)
+          const y = row * (cellSize + gap)
+
           blocks.push({
             id: id++,
-            x: col * (cellSize + gap),
-            y: row * (cellSize + gap),
-            width: pattern.w * cellSize + (pattern.w - 1) * gap,
-            height: pattern.h * cellSize + (pattern.h - 1) * gap,
+            x,
+            y,
+            width: w,
+            height: h,
+            centerX: x + w / 2,
+            centerY: y + h / 2,
             type: types[Math.floor(Math.random() * types.length)]!,
-            delay: (row + col) * 0.03,
+            delay: (row + col) * 0.02,
           })
           placed = true
           break
@@ -76,14 +82,18 @@ function generateBlocks(cols: number, rows: number, cellSize: number, gap: numbe
 
       if (!placed && !grid[row]![col]) {
         grid[row]![col] = true
+        const x = col * (cellSize + gap)
+        const y = row * (cellSize + gap)
         blocks.push({
           id: id++,
-          x: col * (cellSize + gap),
-          y: row * (cellSize + gap),
+          x,
+          y,
           width: cellSize,
           height: cellSize,
+          centerX: x + cellSize / 2,
+          centerY: y + cellSize / 2,
           type: types[Math.floor(Math.random() * types.length)]!,
-          delay: (row + col) * 0.03,
+          delay: (row + col) * 0.02,
         })
       }
     }
@@ -175,137 +185,74 @@ function BlockContent({ type, width, height }: { type: Block["type"]; width: num
   }
 }
 
-function InteractiveBlock({
-  block,
-  mouseX,
-  mouseY,
-  containerRef,
-}: {
-  block: Block
-  mouseX: ReturnType<typeof useMotionValue<number>>
-  mouseY: ReturnType<typeof useMotionValue<number>>
-  containerRef: React.RefObject<HTMLDivElement | null>
-}) {
-  const blockRef = useRef<HTMLDivElement>(null)
-  const [isNear, setIsNear] = useState(false)
-  const [distance, setDistance] = useState(1000)
-
-  const opacity = useSpring(0, { stiffness: 100, damping: 20 })
-  const scale = useSpring(1, { stiffness: 300, damping: 25 })
-  const glowOpacity = useSpring(0, { stiffness: 200, damping: 30 })
-  const borderOpacity = useSpring(0, { stiffness: 200, damping: 30 })
-
-  useEffect(() => {
-    opacity.set(1)
-  }, [opacity])
-
-  useEffect(() => {
-    const unsubX = mouseX.on("change", () => {
-      if (!blockRef.current || !containerRef.current) return
-
-      const rect = blockRef.current.getBoundingClientRect()
-      const containerRect = containerRef.current.getBoundingClientRect()
-
-      const blockCenterX = rect.left + rect.width / 2
-      const blockCenterY = rect.top + rect.height / 2
-
-      const mx = mouseX.get() + containerRect.left
-      const my = mouseY.get() + containerRect.top
-
-      const dx = mx - blockCenterX
-      const dy = my - blockCenterY
-      const dist = Math.sqrt(dx * dx + dy * dy)
-
-      setDistance(dist)
-
-      const threshold = 150
-      const near = dist < threshold
-      setIsNear(near)
-
-      if (near) {
-        const intensity = 1 - dist / threshold
-        scale.set(1 + intensity * 0.04)
-        glowOpacity.set(intensity * 0.6)
-        borderOpacity.set(intensity * 0.8)
-      } else {
-        scale.set(1)
-        glowOpacity.set(0)
-        borderOpacity.set(0)
-      }
-    })
-
-    return () => unsubX()
-  }, [mouseX, mouseY, containerRef, scale, glowOpacity, borderOpacity])
-
+function StaticBlock({ block }: { block: Block }) {
   return (
-    <motion.div
-      ref={blockRef}
-      className="absolute"
+    <div
+      data-block-id={block.id}
+      className="block-cell absolute will-change-transform"
       style={{
         left: block.x,
         top: block.y,
         width: block.width,
         height: block.height,
-        opacity,
-        scale,
-      }}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{
-        delay: block.delay,
-        duration: 0.5,
-        ease: [0.23, 1, 0.32, 1],
+        opacity: 0,
+        transform: "scale(0.92)",
+        animation: `block-enter 0.5s ${block.delay}s both cubic-bezier(0.23, 1, 0.32, 1)`,
+        transition: "transform 0.15s ease-out",
       }}
     >
-      <div className="relative w-full h-full group">
-        {/* Block background */}
-        <div className="absolute inset-0 rounded-lg bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm overflow-hidden transition-colors duration-300">
+      <div className="relative w-full h-full">
+        {/* Base block */}
+        <div className="absolute inset-0 rounded-lg bg-white/[0.03] border border-white/[0.06] overflow-hidden">
           <BlockContent type={block.type} width={block.width} height={block.height} />
         </div>
 
-        {/* Glow effect on hover */}
-        <motion.div
-          className="absolute -inset-px rounded-lg pointer-events-none"
+        {/* Glow overlay */}
+        <div
+          className="block-glow absolute -inset-px rounded-lg pointer-events-none"
           style={{
-            opacity: glowOpacity,
-            background: "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-            boxShadow: "inset 0 0 20px rgba(255,255,255,0.03)",
+            opacity: 0,
+            background: "linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03))",
+            transition: "opacity 0.15s ease-out",
           }}
         />
 
-        {/* Border glow */}
-        <motion.div
-          className="absolute -inset-px rounded-lg pointer-events-none"
+        {/* Border highlight */}
+        <div
+          className="block-border absolute -inset-px rounded-lg pointer-events-none"
           style={{
-            opacity: borderOpacity,
-            border: "1px solid rgba(255, 255, 255, 0.15)",
+            opacity: 0,
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            boxShadow: "0 0 15px rgba(255, 255, 255, 0.03), inset 0 0 15px rgba(255, 255, 255, 0.02)",
+            transition: "opacity 0.15s ease-out",
           }}
         />
 
-        {/* Snap indicator — the little corner brackets */}
-        <motion.div
-          className="absolute -inset-1 pointer-events-none"
-          style={{ opacity: glowOpacity }}
+        {/* Snap corner brackets */}
+        <div
+          className="block-corners absolute -inset-1.5 pointer-events-none"
+          style={{ opacity: 0, transition: "opacity 0.15s ease-out" }}
         >
-          {/* Top-left */}
-          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-white/30 rounded-tl" />
-          {/* Top-right */}
-          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-white/30 rounded-tr" />
-          {/* Bottom-left */}
-          <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-white/30 rounded-bl" />
-          {/* Bottom-right */}
-          <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-white/30 rounded-br" />
-        </motion.div>
+          <div className="absolute top-0 left-0 w-2.5 h-2.5 border-t border-l border-white/40 rounded-tl-sm" />
+          <div className="absolute top-0 right-0 w-2.5 h-2.5 border-t border-r border-white/40 rounded-tr-sm" />
+          <div className="absolute bottom-0 left-0 w-2.5 h-2.5 border-b border-l border-white/40 rounded-bl-sm" />
+          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 border-b border-r border-white/40 rounded-br-sm" />
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
 export function BlockGrid() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const glowRef = useRef<HTMLDivElement>(null)
   const [blocks, setBlocks] = useState<Block[]>([])
-  const mouseX = useMotionValue(0)
-  const mouseY = useMotionValue(0)
+  const mouseRef = useRef({ x: -9999, y: -9999 })
+  const rafRef = useRef<number>(0)
+  const blockElementsRef = useRef<
+    Map<number, { glow: HTMLElement; border: HTMLElement; corners: HTMLElement; el: HTMLElement }>
+  >(new Map())
+  const offsetRef = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     const cellSize = 72
@@ -315,46 +262,125 @@ export function BlockGrid() {
     setBlocks(generateBlocks(cols, rows, cellSize, gap))
   }, [])
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  // Cache all block DOM elements once after render
+  useEffect(() => {
+    if (!containerRef.current || blocks.length === 0) return
+
+    const map = new Map<
+      number,
+      { glow: HTMLElement; border: HTMLElement; corners: HTMLElement; el: HTMLElement }
+    >()
+    const cells = containerRef.current.querySelectorAll<HTMLElement>(".block-cell")
+
+    cells.forEach((el) => {
+      const id = Number(el.dataset.blockId)
+      const glow = el.querySelector<HTMLElement>(".block-glow")
+      const border = el.querySelector<HTMLElement>(".block-border")
+      const corners = el.querySelector<HTMLElement>(".block-corners")
+      if (glow && border && corners) {
+        map.set(id, { el, glow, border, corners })
+      }
+    })
+
+    blockElementsRef.current = map
+  }, [blocks])
+
+  // Track container offset
+  useEffect(() => {
+    const updateOffset = () => {
       if (!containerRef.current) return
       const rect = containerRef.current.getBoundingClientRect()
-      mouseX.set(e.clientX - rect.left)
-      mouseY.set(e.clientY - rect.top)
-    },
-    [mouseX, mouseY]
-  )
+      offsetRef.current = { x: rect.left, y: rect.top }
+    }
+    updateOffset()
+    window.addEventListener("resize", updateOffset)
+    return () => window.removeEventListener("resize", updateOffset)
+  }, [])
+
+  // Single RAF loop — direct DOM mutation, no React re-renders
+  useEffect(() => {
+    if (blocks.length === 0) return
+
+    const THRESHOLD = 180
+    const THRESHOLD_SQ = THRESHOLD * THRESHOLD
+    const GRID_OFFSET = -40
+
+    const loop = () => {
+      const mx = mouseRef.current.x - offsetRef.current.x - GRID_OFFSET
+      const my = mouseRef.current.y - offsetRef.current.y - GRID_OFFSET
+
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i]!
+        const cached = blockElementsRef.current.get(block.id)
+        if (!cached) continue
+
+        const dx = mx - block.centerX
+        const dy = my - block.centerY
+        const distSq = dx * dx + dy * dy
+
+        if (distSq < THRESHOLD_SQ) {
+          const dist = Math.sqrt(distSq)
+          const intensity = Math.max(0, Math.min(1, 1 - dist / THRESHOLD))
+
+          cached.glow.style.opacity = String(intensity * 0.7)
+          cached.border.style.opacity = String(intensity)
+          cached.corners.style.opacity = String(intensity > 0.15 ? intensity : 0)
+          cached.el.style.transform = `scale(${1 + intensity * 0.03})`
+        } else {
+          cached.glow.style.opacity = "0"
+          cached.border.style.opacity = "0"
+          cached.corners.style.opacity = "0"
+          cached.el.style.transform = "scale(1)"
+        }
+      }
+
+      // Update cursor-following radial glow
+      if (glowRef.current) {
+        glowRef.current.style.background = `radial-gradient(600px circle at ${mouseRef.current.x}px ${mouseRef.current.y}px, rgba(255,255,255,0.02), transparent 60%)`
+      }
+
+      rafRef.current = requestAnimationFrame(loop)
+    }
+
+    rafRef.current = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [blocks])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    mouseRef.current.x = e.clientX
+    mouseRef.current.y = e.clientY
+  }, [])
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 overflow-hidden"
-      onMouseMove={handleMouseMove}
-    >
-      {/* Subtle radial gradient that follows cursor */}
-      <motion.div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          background: useTransform(
-            [mouseX, mouseY],
-            ([x, y]) =>
-              `radial-gradient(800px circle at ${x}px ${y}px, rgba(255,255,255,0.015), transparent 60%)`
-          ),
-        }}
-      />
+    <>
+      <style jsx global>{`
+        @keyframes block-enter {
+          from {
+            opacity: 0;
+            transform: scale(0.92);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+      `}</style>
 
-      {/* Blocks */}
-      <div className="absolute inset-0" style={{ transform: "translate(-40px, -40px)" }}>
-        {blocks.map((block) => (
-          <InteractiveBlock
-            key={block.id}
-            block={block}
-            mouseX={mouseX}
-            mouseY={mouseY}
-            containerRef={containerRef}
-          />
-        ))}
+      <div
+        ref={containerRef}
+        className="fixed inset-0 overflow-hidden"
+        onMouseMove={handleMouseMove}
+      >
+        {/* Radial glow following cursor */}
+        <div ref={glowRef} className="fixed inset-0 pointer-events-none" />
+
+        {/* Blocks */}
+        <div className="absolute inset-0" style={{ transform: "translate(-40px, -40px)" }}>
+          {blocks.map((block) => (
+            <StaticBlock key={block.id} block={block} />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

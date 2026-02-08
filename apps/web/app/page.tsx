@@ -1,15 +1,11 @@
 import { BlockGrid } from "@/components/landing/block-grid"
-import { CursorGlow } from "@/components/landing/cursor-glow"
 import { HeroContent } from "@/components/landing/hero-content"
 
 export default function Page() {
   return (
-    <main className="relative min-h-svh bg-[#07070a] overflow-hidden cursor-none selection:bg-white/10">
+    <main className="relative min-h-svh bg-[#07070a] overflow-hidden selection:bg-white/10">
       {/* Interactive block grid background */}
       <BlockGrid />
-
-      {/* Custom cursor glow */}
-      <CursorGlow />
 
       {/* Dark vignette overlays for depth */}
       <div className="fixed inset-0 pointer-events-none z-[1] bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(7,7,10,0.4)_50%,rgba(7,7,10,0.85)_100%)]" />
