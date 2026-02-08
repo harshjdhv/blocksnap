@@ -26,7 +26,7 @@ BlockSnap allows users to capture **logical UI blocks** such as:
 - Forms and components
 
 Users hover over an element, BlockSnap intelligently snaps to the most
-reasonable "block", and captures it as a clean image.
+reasonable “block”, and captures it as a clean image.
 
 The user never thinks in pixels.
 They think in UI components.
@@ -126,7 +126,7 @@ The system:
   - Semantic HTML tags (`section`, `article`, `nav`, etc.)
   - Reasonable size thresholds
   - Layout characteristics (flex, grid)
-- Selects the best-scoring candidate as the "block"
+- Selects the best-scoring candidate as the “block”
 
 The goal is not perfection, but **consistent, intuitive selection**.
 
