@@ -24,23 +24,92 @@
             <span class="version">v1.0.0</span>
         </div>
 
-        <!-- Main Content -->
-        <div class="popup-content">
-            <p class="description">
-                Select and capture any UI block on the page with a single click.
-            </p>
+        <!-- Mode Selection -->
+        <div class="capture-modes">
+            <p class="modes-label">Select capture mode:</p>
 
-            <button id="capture-btn" class="btn btn-primary">
-                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span id="btn-text">Start Capturing</span>
-            </button>
+            <div class="mode-grid">
+                <!-- Block Mode -->
+                <button class="mode-card" data-mode="block">
+                    <div class="mode-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                            <rect x="14" y="3" width="7" height="7" rx="1.5" opacity="0.5" />
+                            <rect x="3" y="14" width="7" height="7" rx="1.5" opacity="0.5" />
+                            <rect x="14" y="14" width="7" height="7" rx="1.5" opacity="0.3" />
+                        </svg>
+                    </div>
+                    <div class="mode-info">
+                        <span class="mode-name">Block</span>
+                        <span class="mode-desc">Detect UI blocks</span>
+                    </div>
+                </button>
 
-            <div class="shortcut-hint">
-                <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>S</kbd> to toggle
+                <!-- Visible Page -->
+                <button class="mode-card" data-mode="visible">
+                    <div class="mode-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </div>
+                    <div class="mode-info">
+                        <span class="mode-name">Visible</span>
+                        <span class="mode-desc">Current viewport</span>
+                    </div>
+                </button>
+
+                <!-- Region Select -->
+                <button class="mode-card" data-mode="region">
+                    <div class="mode-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                            <rect x="7" y="7" width="10" height="10" rx="1" stroke-dasharray="3 2" />
+                        </svg>
+                    </div>
+                    <div class="mode-info">
+                        <span class="mode-name">Region</span>
+                        <span class="mode-desc">Drag to select</span>
+                    </div>
+                </button>
+
+                <!-- Full Page -->
+                <button class="mode-card" data-mode="fullpage">
+                    <div class="mode-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <rect x="4" y="2" width="16" height="20" rx="2" />
+                            <line x1="4" y1="8" x2="20" y2="8" opacity="0.5" />
+                            <line x1="4" y1="14" x2="20" y2="14" opacity="0.5" />
+                            <path d="M12 18l-2 2m2-2l2 2m-2-2V14" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="mode-info">
+                        <span class="mode-name">Full Page</span>
+                        <span class="mode-desc">Scroll & stitch</span>
+                    </div>
+                </button>
             </div>
+        </div>
+
+        <!-- Quick Capture Button -->
+        <button id="capture-btn" class="btn btn-primary">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span id="btn-text">Start Capturing</span>
+        </button>
+
+        <!-- Shortcut Hint -->
+        <div class="shortcut-hint">
+            <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>S</kbd> to toggle
         </div>
 
         <!-- Footer -->

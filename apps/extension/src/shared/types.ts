@@ -2,6 +2,30 @@
 // BlockSnap Extension - Shared Types
 // ============================================================================
 
+/** Available capture modes */
+export type CaptureMode =
+  | "block" // Original block detection mode
+  | "visible" // Visible viewport screenshot
+  | "region" // Drag-to-select region
+  | "fullpage"; // Full page scroll & stitch
+
+/** Region selection coordinates */
+export interface RegionSelection {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  width: number;
+  height: number;
+}
+
+/** Full page capture progress */
+export interface FullPageProgress {
+  currentStep: number;
+  totalSteps: number;
+  status: "scrolling" | "capturing" | "stitching" | "complete" | "error";
+}
+
 /** Block candidate detected in the DOM */
 export interface BlockCandidate {
   id: string;

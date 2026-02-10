@@ -18,6 +18,16 @@ interface CaptureData {
     timestamp: number;
 }
 
+// Safely extract hostname from URL, with fallback
+function getHostname(url: string): string {
+    if (!url || url.trim() === '') return 'Unknown source';
+    try {
+        return new URL(url).hostname;
+    } catch {
+        return url || 'Unknown source';
+    }
+}
+
 export default function PreviewPage() {
     const [capture, setCapture] = useState<CaptureData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -126,8 +136,8 @@ export default function PreviewPage() {
                         <div className="space-y-4">
                             <div>
                                 <div className="text-xs text-gray-500 mb-1">Source URL</div>
-                                <div className="text-sm font-medium truncate" title={capture.metadata.url}>
-                                    {new URL(capture.metadata.url).hostname}
+                                <div className="text-sm font-medium truncate" title={capture.metadata.url || 'Unknown'}>
+                                    {getHostname(capture.metadata.url)}
                                 </div>
                             </div>
 

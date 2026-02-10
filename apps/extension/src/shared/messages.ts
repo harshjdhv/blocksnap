@@ -2,12 +2,21 @@
 // BlockSnap Extension - Message Definitions
 // ============================================================================
 
-import type { CropRect, CaptureMetadata } from "./types";
+import type {
+  CropRect,
+  CaptureMetadata,
+  CaptureMode,
+  RegionSelection,
+  FullPageProgress,
+} from "./types";
 
 // ---- Message Type Definitions ----
 
 export interface ActivateMessage {
   type: "ACTIVATE_BLOCKSNAP";
+  payload?: {
+    mode: CaptureMode;
+  };
 }
 
 export interface DeactivateMessage {
@@ -66,6 +75,64 @@ export interface StateResponseMessage {
   };
 }
 
+// ---- New Capture Mode Messages ----
+
+export interface CaptureVisiblePageMessage {
+  type: "CAPTURE_VISIBLE_PAGE";
+  payload: {
+    metadata: CaptureMetadata;
+  };
+}
+
+export interface CaptureRegionMessage {
+  type: "CAPTURE_REGION";
+  payload: {
+    rect: CropRect;
+    devicePixelRatio: number;
+    metadata: CaptureMetadata;
+  };
+}
+
+export interface CaptureFullPageMessage {
+  type: "CAPTURE_FULL_PAGE";
+  payload: {
+    metadata: CaptureMetadata;
+  };
+}
+
+export interface FullPageScrollMessage {
+  type: "FULL_PAGE_SCROLL";
+  payload: {
+    scrollY: number;
+  };
+}
+
+export interface FullPageProgressMessage {
+  type: "FULL_PAGE_PROGRESS";
+  payload: FullPageProgress;
+}
+
+export interface StitchImagesMessage {
+  type: "STITCH_IMAGES";
+  payload: {
+    images: string[];
+    viewportHeight: number;
+    totalHeight: number;
+    devicePixelRatio: number;
+  };
+}
+
+export interface StitchCompleteMessage {
+  type: "STITCH_COMPLETE";
+  payload: {
+    imageDataUrl: string;
+  };
+}
+
+export interface CaptureViewportChunkMessage {
+  type: "CAPTURE_VIEWPORT_CHUNK";
+}
+
 // ---- Union Type ----
 
 export type ExtensionMessage =
@@ -77,12 +144,23 @@ export type ExtensionMessage =
   | CropCompleteMessage
   | ShowToastMessage
   | GetStateMessage
-  | StateResponseMessage;
+  | StateResponseMessage
+  | CaptureVisiblePageMessage
+  | CaptureRegionMessage
+  | CaptureFullPageMessage
+  | FullPageScrollMessage
+  | FullPageProgressMessage
+  | StitchImagesMessage
+  | StitchCompleteMessage
+  | CaptureViewportChunkMessage;
 
 // ---- Message Creators ----
 
 export const Messages = {
-  activate: (): ActivateMessage => ({ type: "ACTIVATE_BLOCKSNAP" }),
+  activate: (mode: CaptureMode = "block"): ActivateMessage => ({
+    type: "ACTIVATE_BLOCKSNAP",
+    payload: { mode },
+  }),
 
   deactivate: (): DeactivateMessage => ({ type: "DEACTIVATE_BLOCKSNAP" }),
 
@@ -130,5 +208,53 @@ export const Messages = {
   stateResponse: (isActive: boolean): StateResponseMessage => ({
     type: "STATE_RESPONSE",
     payload: { isActive },
+  }),
+
+  // ---- New Capture Mode Creators ----
+
+  captureVisiblePage: (
+    metadata: CaptureMetadata,
+  ): CaptureVisiblePageMessage => ({
+    type: "CAPTURE_VISIBLE_PAGE",
+    payload: { metadata },
+  }),
+
+  captureRegion: (
+    rect: CropRect,
+    devicePixelRatio: number,
+    metadata: CaptureMetadata,
+  ): CaptureRegionMessage => ({
+    type: "CAPTURE_REGION",
+    payload: { rect, devicePixelRatio, metadata },
+  }),
+
+  captureFullPage: (metadata: CaptureMetadata): CaptureFullPageMessage => ({
+    type: "CAPTURE_FULL_PAGE",
+    payload: { metadata },
+  }),
+
+  fullPageScroll: (scrollY: number): FullPageScrollMessage => ({
+    type: "FULL_PAGE_SCROLL",
+    payload: { scrollY },
+  }),
+
+  fullPageProgress: (progress: FullPageProgress): FullPageProgressMessage => ({
+    type: "FULL_PAGE_PROGRESS",
+    payload: progress,
+  }),
+
+  stitchImages: (
+    images: string[],
+    viewportHeight: number,
+    totalHeight: number,
+    devicePixelRatio: number,
+  ): StitchImagesMessage => ({
+    type: "STITCH_IMAGES",
+    payload: { images, viewportHeight, totalHeight, devicePixelRatio },
+  }),
+
+  stitchComplete: (imageDataUrl: string): StitchCompleteMessage => ({
+    type: "STITCH_COMPLETE",
+    payload: { imageDataUrl },
   }),
 };

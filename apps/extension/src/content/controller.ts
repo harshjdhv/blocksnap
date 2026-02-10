@@ -2,7 +2,11 @@
 // BlockSnap Extension - Main Controller
 // ============================================================================
 
-import type { BlockCandidate, CaptureMetadata } from "../shared/types";
+import type {
+  BlockCandidate,
+  CaptureMetadata,
+  CaptureMode,
+} from "../shared/types";
 import { Messages } from "../shared/messages";
 import { MOUSE_THROTTLE_MS } from "../shared/constants";
 import { throttle } from "../lib/throttle";
@@ -16,6 +20,16 @@ import {
   hideOverlay,
   showOverlayElement,
 } from "./overlay";
+import {
+  startRegionSelection,
+  isRegionSelectionActive,
+  cancelRegionSelection,
+} from "./region-selector";
+import {
+  startFullPageCapture,
+  isFullPageCaptureActive,
+  cancelFullPageCapture,
+} from "./full-page-capturer";
 
 /**
  * BlockSnap Controller
@@ -24,6 +38,7 @@ import {
  */
 class BlockSnapController {
   private isActive = false;
+  private currentMode: CaptureMode = "block";
   private currentBlock: BlockCandidate | null = null;
   private throttledMouseMove: (e: MouseEvent) => void;
   private boundHandleClick: (e: MouseEvent) => void;
@@ -48,13 +63,14 @@ class BlockSnapController {
    * Handles messages from the background script.
    */
   private handleMessage(
-    message: { type: string },
+    message: { type: string; payload?: any },
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response?: unknown) => void,
   ): boolean {
     switch (message.type) {
       case "ACTIVATE_BLOCKSNAP":
-        this.activate();
+        const mode = message.payload?.mode || "block";
+        this.activate(mode);
         sendResponse({ success: true });
         return true;
 
@@ -64,7 +80,7 @@ class BlockSnapController {
         return true;
 
       case "GET_STATE":
-        sendResponse({ isActive: this.isActive });
+        sendResponse({ isActive: this.isActive, mode: this.currentMode });
         return true;
 
       case "SHOW_TOAST":
@@ -83,13 +99,43 @@ class BlockSnapController {
   }
 
   /**
-   * Activates capture mode.
+   * Activates capture mode with the specified capture type.
    */
-  activate(): void {
-    if (this.isActive) return;
+  activate(mode: CaptureMode = "block"): void {
+    if (this.isActive) {
+      // If already active in a different mode, deactivate first
+      if (this.currentMode !== mode) {
+        this.deactivate();
+      } else {
+        return;
+      }
+    }
 
     this.isActive = true;
+    this.currentMode = mode;
 
+    console.log(`[BlockSnap] Activating capture mode: ${mode}`);
+
+    switch (mode) {
+      case "block":
+        this.activateBlockMode();
+        break;
+      case "visible":
+        this.captureVisiblePage();
+        break;
+      case "region":
+        this.activateRegionMode();
+        break;
+      case "fullpage":
+        this.activateFullPageMode();
+        break;
+    }
+  }
+
+  /**
+   * Activates block detection mode (original behavior).
+   */
+  private activateBlockMode(): void {
     // Create overlay
     createOverlay();
     setCaptureMode(true);
@@ -107,9 +153,135 @@ class BlockSnapController {
     });
 
     // Show activation toast
-    showToast("BlockSnap activated — Click to capture", "info");
+    showToast("Block mode — Click to capture", "info");
+    console.log("[BlockSnap] Block capture mode activated");
+  }
 
-    console.log("[BlockSnap] Capture mode activated");
+  /**
+   * Captures the visible viewport immediately.
+   */
+  private async captureVisiblePage(): Promise<void> {
+    showToast("Capturing visible page...", "info");
+
+    const metadata: CaptureMetadata = {
+      url: window.location.href,
+      title: document.title,
+      elementType: "section",
+      label: "Visible Page",
+      dimensions: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      capturedAt: Date.now(),
+    };
+
+    try {
+      const response = await chrome.runtime.sendMessage(
+        Messages.captureVisiblePage(metadata),
+      );
+
+      if (response?.success) {
+        showToast("Screenshot captured & copied!", "success");
+      } else {
+        showToast(
+          `Capture failed: ${response?.error || "Unknown error"}`,
+          "error",
+        );
+      }
+    } catch (error: any) {
+      console.error("[BlockSnap] Visible page capture error:", error);
+      showToast("Failed to capture screenshot", "error");
+    } finally {
+      this.deactivate();
+      chrome.runtime.sendMessage(Messages.deactivate()).catch(() => {});
+    }
+  }
+
+  /**
+   * Activates region selection mode.
+   */
+  private async activateRegionMode(): Promise<void> {
+    console.log("[BlockSnap] Region selection mode activated");
+
+    try {
+      const selection = await startRegionSelection();
+
+      if (!selection) {
+        // User cancelled
+        showToast("Region selection cancelled", "info");
+        this.deactivate();
+        chrome.runtime.sendMessage(Messages.deactivate()).catch(() => {});
+        return;
+      }
+
+      showToast("Capturing region...", "info");
+
+      const metadata: CaptureMetadata = {
+        url: window.location.href,
+        title: document.title,
+        elementType: "section",
+        label: "Region Selection",
+        dimensions: {
+          width: Math.round(selection.width),
+          height: Math.round(selection.height),
+        },
+        capturedAt: Date.now(),
+      };
+
+      const response = await chrome.runtime.sendMessage(
+        Messages.captureRegion(
+          {
+            x: selection.startX,
+            y: selection.startY,
+            width: selection.width,
+            height: selection.height,
+          },
+          window.devicePixelRatio,
+          metadata,
+        ),
+      );
+
+      if (response?.success) {
+        showToast("Region captured & copied!", "success");
+      } else {
+        showToast(
+          `Capture failed: ${response?.error || "Unknown error"}`,
+          "error",
+        );
+      }
+    } catch (error: any) {
+      console.error("[BlockSnap] Region capture error:", error);
+      showToast("Failed to capture region", "error");
+    } finally {
+      this.deactivate();
+      chrome.runtime.sendMessage(Messages.deactivate()).catch(() => {});
+    }
+  }
+
+  /**
+   * Activates full page capture mode.
+   */
+  private async activateFullPageMode(): Promise<void> {
+    console.log("[BlockSnap] Full page capture mode activated");
+
+    try {
+      const result = await startFullPageCapture();
+
+      if (result.success) {
+        showToast("Full page captured!", "success");
+      } else {
+        showToast(
+          `Capture failed: ${result.error || "Unknown error"}`,
+          "error",
+        );
+      }
+    } catch (error: any) {
+      console.error("[BlockSnap] Full page capture error:", error);
+      showToast("Failed to capture full page", "error");
+    } finally {
+      this.deactivate();
+      chrome.runtime.sendMessage(Messages.deactivate()).catch(() => {});
+    }
   }
 
   /**
@@ -121,17 +293,34 @@ class BlockSnapController {
     this.isActive = false;
     this.currentBlock = null;
 
-    // Remove event listeners
-    document.removeEventListener("mousemove", this.throttledMouseMove);
-    document.removeEventListener("click", this.boundHandleClick, {
-      capture: true,
-    });
-    document.removeEventListener("keydown", this.boundHandleKeydown);
-    window.removeEventListener("scroll", this.boundHandleScroll);
+    // Clean up based on current mode
+    switch (this.currentMode) {
+      case "block":
+        // Remove event listeners
+        document.removeEventListener("mousemove", this.throttledMouseMove);
+        document.removeEventListener("click", this.boundHandleClick, {
+          capture: true,
+        });
+        document.removeEventListener("keydown", this.boundHandleKeydown);
+        window.removeEventListener("scroll", this.boundHandleScroll);
 
-    // Cleanup overlay
-    destroyOverlay();
-    setCaptureMode(false);
+        // Cleanup overlay
+        destroyOverlay();
+        setCaptureMode(false);
+        break;
+
+      case "region":
+        if (isRegionSelectionActive()) {
+          cancelRegionSelection();
+        }
+        break;
+
+      case "fullpage":
+        if (isFullPageCaptureActive()) {
+          cancelFullPageCapture();
+        }
+        break;
+    }
 
     console.log("[BlockSnap] Capture mode deactivated");
   }
@@ -140,7 +329,7 @@ class BlockSnapController {
    * Handles mouse movement to update block detection.
    */
   private handleMouseMove(e: MouseEvent): void {
-    if (!this.isActive) return;
+    if (!this.isActive || this.currentMode !== "block") return;
 
     // Get element under cursor
     const element = getElementAtPoint(e.clientX, e.clientY);
@@ -165,7 +354,8 @@ class BlockSnapController {
    * Handles click to capture the current block.
    */
   private handleClick(e: MouseEvent): void {
-    if (!this.isActive || !this.currentBlock) return;
+    if (!this.isActive || this.currentMode !== "block" || !this.currentBlock)
+      return;
 
     // Prevent the click from propagating to the page
     e.preventDefault();
@@ -192,8 +382,12 @@ class BlockSnapController {
       return;
     }
 
-    // Enter to capture (same as click)
-    if (e.key === "Enter" && this.currentBlock) {
+    // Enter to capture (same as click) - only for block mode
+    if (
+      e.key === "Enter" &&
+      this.currentMode === "block" &&
+      this.currentBlock
+    ) {
       e.preventDefault();
       this.captureBlock(this.currentBlock);
     }
@@ -203,7 +397,8 @@ class BlockSnapController {
    * Handles scroll to update overlay position.
    */
   private handleScroll(): void {
-    if (!this.isActive || !this.currentBlock) return;
+    if (!this.isActive || this.currentMode !== "block" || !this.currentBlock)
+      return;
 
     // Re-detect the block as its position may have changed
     const element = this.currentBlock.element;
@@ -294,6 +489,13 @@ class BlockSnapController {
    */
   isActiveMode(): boolean {
     return this.isActive;
+  }
+
+  /**
+   * Returns the current capture mode.
+   */
+  getCurrentMode(): CaptureMode {
+    return this.currentMode;
   }
 }
 

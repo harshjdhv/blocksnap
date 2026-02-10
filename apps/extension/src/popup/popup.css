@@ -13,7 +13,7 @@ body {
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #0a0a0a;
   color: #fafafa;
-  min-width: 300px;
+  min-width: 320px;
 }
 
 .popup-container {
@@ -54,17 +54,86 @@ body {
   border-radius: 4px;
 }
 
-/* ---- Content ---- */
-.popup-content {
+/* ---- Capture Modes ---- */
+.capture-modes {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
-.description {
-  font-size: 13px;
+.modes-label {
+  font-size: 12px;
   color: #9ca3af;
-  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mode-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.mode-card:hover {
+  background: rgba(168, 85, 247, 0.08);
+  border-color: rgba(168, 85, 247, 0.3);
+  transform: translateY(-1px);
+}
+
+.mode-card:active {
+  transform: translateY(0);
+}
+
+.mode-card.selected {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.3);
+}
+
+.mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: 8px;
+  color: #a855f7;
+  flex-shrink: 0;
+}
+
+.mode-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mode-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.mode-desc {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---- Button ---- */
@@ -194,4 +263,49 @@ kbd {
   50% {
     opacity: 0.5;
   }
+}
+
+/* ---- Mode-specific colors ---- */
+.mode-card[data-mode="block"] .mode-icon {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.mode-card[data-mode="visible"] .mode-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.mode-card[data-mode="region"] .mode-icon {
+  background: rgba(236, 72, 153, 0.1);
+  color: #ec4899;
+}
+
+.mode-card[data-mode="fullpage"] .mode-icon {
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+}
+
+.mode-card[data-mode="block"]:hover,
+.mode-card[data-mode="block"].selected {
+  border-color: rgba(168, 85, 247, 0.3);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.mode-card[data-mode="visible"]:hover,
+.mode-card[data-mode="visible"].selected {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.mode-card[data-mode="region"]:hover,
+.mode-card[data-mode="region"].selected {
+  border-color: rgba(236, 72, 153, 0.3);
+  background: rgba(236, 72, 153, 0.08);
+}
+
+.mode-card[data-mode="fullpage"]:hover,
+.mode-card[data-mode="fullpage"].selected {
+  border-color: rgba(20, 184, 166, 0.3);
+  background: rgba(20, 184, 166, 0.08);
 }
